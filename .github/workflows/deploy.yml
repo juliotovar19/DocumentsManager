@@ -27,7 +27,9 @@ jobs:
           node-version: '20'
       
       - name: Install CDK
-        run: npm install -g aws-cdk
+        run: |
+          npm install -g aws-cdk
+          cdk --version
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,33 +38,34 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
       
+      - name: List files structure
+        run: |
+          pwd
+          ls -la
+          ls -la src/
+      
       - name: Restore dependencies
         run: dotnet restore
       
       - name: Build all projects
-        run: dotnet build --no-restore
+        run: dotnet build
       
-      - name: Publish Publisher
+      - name: Publish Lambdas
         run: |
-          dotnet publish src/DocumentsManager.Publisher -c Release -o bin/publish/publisher
-          
-      - name: Publish Subscriber
-        run: |
-          dotnet publish src/DocumentsManager.Subscriber -c Release -o bin/publish/subscriber
-          
-      - name: Publish Target
-        run: |
-          dotnet publish src/DocumentsManager.Target -c Release -o bin/publish/target
+          dotnet publish src/DocumentsManager.Publisher -c Release
+          dotnet publish src/DocumentsManager.Subscriber -c Release
+          dotnet publish src/DocumentsManager.Target -c Release
+          echo "Publish completed"
       
       - name: CDK Synth
         run: |
           cd src/DocumentsManager.Infra
-          cdk synth
+          cdk synth --verbose
       
-      - name: CDK Bootstrap (si es necesario)
+      - name: CDK Bootstrap
         run: |
           cd src/DocumentsManager.Infra
-          cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }}
+          cdk bootstrap --verbose
       
       - name: CDK Deploy
         run: |

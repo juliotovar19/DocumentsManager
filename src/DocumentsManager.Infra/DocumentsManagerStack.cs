@@ -55,8 +55,8 @@ namespace DocumentsManager.Infra
 
             publisherRole.AddToPolicy(new PolicyStatement(new PolicyStatementProps
             {
-                Actions = new[] { "s3:PutObject", "sns:Publish" },
-                Resources = new[] { bucketOrigen.BucketArn, topic.TopicArn }
+                Actions = new[] { "s3:PutObject", "s3:PutObjectAcl", "sns:Publish" },
+                Resources = new[] { bucketOrigen.BucketArn + "/*", bucketOrigen.BucketArn, topic.TopicArn }
             }));
 
             var subscriberRole = new Role(this, "SubscriberRole", new RoleProps
@@ -114,7 +114,7 @@ namespace DocumentsManager.Infra
             var publisher = new Function(this, "PublisherFunction", new FunctionProps
             {
                 Runtime = Runtime.DOTNET_6,
-                Code = Code.FromAsset("../DocumentsManager.Publisher/bin/Release/net8.0/publish"),
+                Code = Code.FromAsset("../../bin/publish/publisher"),
                 Handler = "DocumentsManager.Publisher::DocumentsManager.Publisher.Function::FunctionHandler",
                 Role = publisherRole,
                 Timeout = Duration.Seconds(30),
@@ -140,7 +140,7 @@ namespace DocumentsManager.Infra
             var subscriber = new Function(this, "SubscriberFunction", new FunctionProps
             {
                 Runtime = Runtime.DOTNET_6,
-                Code = Code.FromAsset("../DocumentsManager.Subscriber/bin/Release/net8.0/publish"),
+                Code = Code.FromAsset("../../bin/publish/subscriber"),
                 Handler = "DocumentsManager.Subscriber::DocumentsManager.Subscriber.Function::FunctionHandler",
                 Role = subscriberRole,
                 Timeout = Duration.Minutes(5),
@@ -155,7 +155,7 @@ namespace DocumentsManager.Infra
             var target = new Function(this, "TargetFunction", new FunctionProps
             {
                 Runtime = Runtime.DOTNET_6,
-                Code = Code.FromAsset("../DocumentsManager.Target/bin/Release/net8.0/publish"),
+                Code = Code.FromAsset("../../bin/publish/target"),
                 Handler = "DocumentsManager.Target::DocumentsManager.Target.Function::FunctionHandler",
                 Role = targetRole,
                 Timeout = Duration.Minutes(2),

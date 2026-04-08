@@ -2,7 +2,7 @@ name: Deploy DocumentsManager
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch:
 
 env:
@@ -12,22 +12,19 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       
       - name: Install CDK
         run: npm install -g aws-cdk
@@ -45,23 +42,29 @@ jobs:
       - name: Build all projects
         run: dotnet build --no-restore
       
-      - name: Publish Lambdas
+      - name: Publish Publisher
         run: |
-          dotnet publish src/DocumentsManager.Publisher -c Release -o src/DocumentsManager.Publisher/bin/Release/net8.0/publish
-          dotnet publish src/DocumentsManager.Subscriber -c Release -o src/DocumentsManager.Subscriber/bin/Release/net8.0/publish
-          dotnet publish src/DocumentsManager.Target -c Release -o src/DocumentsManager.Target/bin/Release/net8.0/publish
+          dotnet publish src/DocumentsManager.Publisher -c Release -o bin/publish/publisher
+          
+      - name: Publish Subscriber
+        run: |
+          dotnet publish src/DocumentsManager.Subscriber -c Release -o bin/publish/subscriber
+          
+      - name: Publish Target
+        run: |
+          dotnet publish src/DocumentsManager.Target -c Release -o bin/publish/target
       
       - name: CDK Synth
         run: |
           cd src/DocumentsManager.Infra
           cdk synth
       
+      - name: CDK Bootstrap (si es necesario)
+        run: |
+          cd src/DocumentsManager.Infra
+          cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }}
+      
       - name: CDK Deploy
         run: |
           cd src/DocumentsManager.Infra
-          cdk deploy --require-approval never
-      
-      - name: Get outputs
-        run: |
-          cd src/DocumentsManager.Infra
-          cdk list
+          cdk deploy --require-approval never --verbose

@@ -70,6 +70,8 @@ public class Function
                 TopicArn = snsTopicArn,
                 Message = JsonSerializer.Serialize(message)
             });
+
+            context.Logger.LogInformation($"Message published to SNS: {snsTopicArn}");
             
             return new APIGatewayProxyResponse
             {

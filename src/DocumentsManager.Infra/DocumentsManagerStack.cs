@@ -41,6 +41,21 @@ namespace DocumentsManager.Infra
                 RemovalPolicy = RemovalPolicy.DESTROY
             });
 
+            
+            queue.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
+            {
+                Actions = new[] { "sqs:SendMessage" },
+                Principals = new[] { new ServicePrincipal("sns.amazonaws.com") },
+                Resources = new[] { queue.QueueArn },
+                Conditions = new Dictionary<string, object>
+                {
+                    ["ArnEquals"] = new Dictionary<string, string>
+                    {
+                        ["aws:SourceArn"] = topic.TopicArn
+                    }
+                }
+            }));
+
             topic.AddSubscription(new SqsSubscription(queue));
 
             // Roles IAM
@@ -129,12 +144,18 @@ namespace DocumentsManager.Infra
             // API Gateway
             var api = new RestApi(this, "DocumentsApi", new RestApiProps
             {
-                RestApiName = "Documents Manager API"
+                RestApiName = "Documents Manager API",
+                DeployOptions = new StageOptions
+                {
+                    LoggingLevel = MethodLoggingLevel.INFO,
+                    DataTraceEnabled = true
+                }
             });
 
             var documents = api.Root.AddResource("documents");
             var transactions = documents.AddResource("transactions");
-            transactions.AddMethod("POST", new LambdaIntegration(publisher));
+            var integration = new LambdaIntegration(publisher);
+            transactions.AddMethod("POST", integration);
 
             // Lambda Subscriber
             var subscriber = new Function(this, "SubscriberFunction", new FunctionProps

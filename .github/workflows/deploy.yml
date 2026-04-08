@@ -1,0 +1,67 @@
+name: Deploy DocumentsManager
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  AWS_REGION: 'us-east-1'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install CDK
+        run: npm install -g aws-cdk
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Build all projects
+        run: dotnet build --no-restore
+      
+      - name: Publish Lambdas
+        run: |
+          dotnet publish src/DocumentsManager.Publisher -c Release -o src/DocumentsManager.Publisher/bin/Release/net8.0/publish
+          dotnet publish src/DocumentsManager.Subscriber -c Release -o src/DocumentsManager.Subscriber/bin/Release/net8.0/publish
+          dotnet publish src/DocumentsManager.Target -c Release -o src/DocumentsManager.Target/bin/Release/net8.0/publish
+      
+      - name: CDK Synth
+        run: |
+          cd src/DocumentsManager.Infra
+          cdk synth
+      
+      - name: CDK Deploy
+        run: |
+          cd src/DocumentsManager.Infra
+          cdk deploy --require-approval never
+      
+      - name: Get outputs
+        run: |
+          cd src/DocumentsManager.Infra
+          cdk list

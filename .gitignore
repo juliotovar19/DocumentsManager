@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+*.suo
+*.lock.json
+cdk.out/
+cdk.context.json
+.DS_Store
+*.tmp
+*.log

@@ -70,7 +70,13 @@ namespace DocumentsManager.Infra
 
             subscriberRole.AddToPolicy(new PolicyStatement(new PolicyStatementProps
             {
-                Actions = new[] { "s3:GetObject", "sqs:ReceiveMessage", "sqs:DeleteMessage" },
+                Actions = new[] { 
+                    "s3:GetObject", 
+                    "sqs:ReceiveMessage", 
+                    "sqs:DeleteMessage",
+                    "sqs:GetQueueAttributes",
+                    "sqs:GetQueueUrl"
+                },
                 Resources = new[] { bucketOrigen.BucketArn + "/*", queue.QueueArn }
             }));
 
@@ -88,6 +94,21 @@ namespace DocumentsManager.Infra
                 Actions = new[] { "s3:PutObject" },
                 Resources = new[] { bucketDestino.BucketArn + "/*" }
             }));
+
+            // Asegurar que todos los roles tengan estos permisos básicos
+            var logPolicy = new PolicyStatement(new PolicyStatementProps
+            {
+                Actions = new[] { 
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                },
+                Resources = new[] { "*" }
+            });
+
+            publisherRole.AddToPolicy(logPolicy);
+            subscriberRole.AddToPolicy(logPolicy);
+            targetRole.AddToPolicy(logPolicy);
 
             // Lambda Publisher
             var publisher = new Function(this, "PublisherFunction", new FunctionProps

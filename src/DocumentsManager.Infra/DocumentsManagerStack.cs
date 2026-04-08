@@ -37,7 +37,7 @@ namespace DocumentsManager.Infra
             // SQS Queue
             var queue = new Queue(this, "TransactionQueue", new QueueProps
             {
-                VisibilityTimeout = Duration.Seconds(30),
+                VisibilityTimeout = Duration.Seconds(320), // Mayor que Lambda timeout (300)
                 RemovalPolicy = RemovalPolicy.DESTROY
             });
 
